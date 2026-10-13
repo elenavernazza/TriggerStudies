@@ -25,8 +25,9 @@ python3 RunAll.py --menu NGT --start-from 0 --n-files 10 # --dry-run 1
 ```
 
 ### 2. Set-up the new developments (ParT)
-Get the PR with the new ParT reconstruction sequence
+Get the PR with the new ParT reconstruction sequence:
 ```
+cd $CMSSW_BASE/src
 git switch -c NGTtracking_ParT
 git cms-rebase-topic 52124
 scram b -j

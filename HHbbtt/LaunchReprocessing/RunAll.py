@@ -6,6 +6,7 @@ if __name__ == '__main__':
     parser.add_argument('--start-from', type=int, default=-1, help='Start number (Default: 0)')
     parser.add_argument('--n-files', type=int, default=None, help='Number of files to process (Default: all)')
     parser.add_argument('--n-events', type=int, default=None, help='Number of events per file to process (Default: all)')
+    parser.add_argument('--n-threads', type=int, default=0, help='Number of threads (Default: 0)')
     parser.add_argument('--dry-run', type=bool, default=False, help='Only print configuration, without running (Default: false)')
     parser.add_argument('--out-dir', type=str, default='./', help='Output directory (Default: ./)')
     args = parser.parse_args()
@@ -17,6 +18,7 @@ if __name__ == '__main__':
     n_ev = args.n_events
     start_from = args.start_from if args.start_from is not None else 0
     n_files = args.n_files if args.n_files is not None else len(in_files)
+    n_threads = args.n_threads
 
     if args.menu == "HLT":
         out_dir = args.out_dir + 'HLTMenu'
@@ -26,7 +28,7 @@ if __name__ == '__main__':
             i_file = i_line.strip()
             os.system("aklog") # for tmux surviving
             cmd1 = f"\
-        cmsDriver.py step2 -n {n_ev} --nThreads 0 \
+        cmsDriver.py step2 -n {n_ev} --nThreads {n_threads} \
         -s L1,L1TrackTrigger,L1P2GT,HLT:75e33,NANO:@Phase2HLTVal+@Phase2L1DPG,VALIDATION:@hltValidation \
         --procModifiers nano_l1_hlt --processName HLTX \
         --datatier GEN-SIM-DIGI-RAW-MINIAOD --eventcontent NANOAODSIM \
@@ -50,7 +52,7 @@ if __name__ == '__main__':
             i_file = i_line.strip()
             os.system("aklog") # for tmux surviving
             cmd1 = f"\
-        cmsDriver.py step2 -n {n_ev} --nThreads 0 \
+        cmsDriver.py step2 -n {n_ev} --nThreads {n_threads} \
         -s L1,L1TrackTrigger,L1P2GT,HLT:NGTScouting,NANO:@NGTScoutingVal+@Phase2L1DPG,VALIDATION:@hltValidation \
         --procModifiers nano_l1_hlt,ngtScouting --processName HLTX \
         --datatier GEN-SIM-DIGI-RAW-MINIAOD --eventcontent NANOAODSIM \
@@ -74,7 +76,7 @@ if __name__ == '__main__':
             i_file = i_line.strip()
             os.system("aklog") # for tmux surviving
             cmd1 = f"\
-        cmsDriver.py step2 -n {n_ev} --nThreads 0 \
+        cmsDriver.py step2 -n {n_ev} --nThreads {n_threads} \
         -s L1,L1TrackTrigger,L1P2GT,HLT:NGTScouting,NANO:@NGTScoutingVal+@Phase2L1DPG,VALIDATION:@hltValidation \
         --procModifiers nano_l1_hlt --processName HLTX \
         --datatier GEN-SIM-DIGI-RAW-MINIAOD --eventcontent NANOAODSIM \
