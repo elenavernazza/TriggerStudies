@@ -20,6 +20,7 @@ git clone git@github.com:elenavernazza/TriggerStudies.git
 Run the reprocessing for HLT and NGT Scouting menus:
 ```
 cd TriggerStudies/HHbbtt/LaunchReprocessing
+voms-proxy-init -voms cms -rfc -valid 192:00
 python3 RunAll.py --menu HLT --start-from 0 --n-files 10 # --dry-run 1
 python3 RunAll.py --menu NGT --start-from 0 --n-files 10 # --dry-run 1
 ```
@@ -40,5 +41,6 @@ python3 RunAll.py --menu NGT --start-from 0 --n-files 10 # --dry-run 1
 
 ### 3. Run the trigger acceptance comparison
 ```
+cd ..
 python3 CompareAcceptance.py --max-files 10
 ```

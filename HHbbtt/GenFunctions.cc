@@ -7,6 +7,7 @@
 using ROOT::RVecF;
 using ROOT::RVecI;
 using RVecUC = ROOT::VecOps::RVec<unsigned char>;
+using RVecS = ROOT::VecOps::RVec<Short_t>;
 
 using ROOT::Math::PtEtaPhiMVector; 
 
@@ -27,7 +28,32 @@ RVecI Get_HH_idxs (const RVecI& pdgId, const RVecI& statusFlags)
     return HH_idxs;
 }
 
-// Returns the indeces of the two Higgs bosons
+// Follows a particle down its self-copy chain (e.g. tau -> tau -> tau) and
+// returns the index of the last copy, i.e. the one that actually decays.
+int Get_last_copy(int idx, const RVecI& pdgId, const RVecI& genPartIdxMother)
+{
+    if (idx < 0) return -1;
+
+    int current = idx;
+    int current_pdg = std::abs(pdgId[idx]);
+    bool found_next = true;
+    while (found_next) {
+        found_next = false;
+        for (std::size_t i = 0; i < pdgId.size(); i++) {
+            if (genPartIdxMother[i] != current) continue;
+            if (std::abs(pdgId[i]) == current_pdg) { // self-copy, keep walking
+                current = i;
+                found_next = true;
+                break;
+            }
+        }
+    }
+    return current;
+}
+
+// Returns the indices of the two Higgs decay products.
+// Each index is the LAST copy of the daughter in the GenPart chain
+// (self-copies from showering are followed down to the decaying particle).
 RVecI Get_H_decay_idxs (int H_idx, const RVecI& pdgId, const RVecI& statusFlags, const RVecI& genPartIdxMother)
 {
 
@@ -37,7 +63,7 @@ RVecI Get_H_decay_idxs (int H_idx, const RVecI& pdgId, const RVecI& statusFlags,
 
     for (std::size_t i = 0; i < pdgId.size(); i++) {
         if (genPartIdxMother[i] != H_idx) continue;
-        decay_idxs.push_back(i);
+        decay_idxs.push_back(Get_last_copy(i, pdgId, genPartIdxMother));
     }
 
     if (decay_idxs.size() != 2) {
@@ -71,30 +97,50 @@ RVecI Sort_idxs(const RVecI& idxs, const RVecF& var_high)
 
 // Returns the decay mode of a tau and the index of the visible decay product:
 //  {0, idx} for tau -> e, {1, idx} for tau -> mu, {2, idx} for tau -> had
+// tau_idx must be the LAST copy of the tau (as returned by Get_H_decay_idxs).
 RVecI Get_tau_decay(int tau_idx, const RVecI& pdgId, const RVecI& statusFlags, const RVecI& genPartIdxMother)
 {
     if (tau_idx < 0) return {-1, -1};
 
-    int current = tau_idx;
-    bool found_next = true;
-    while (found_next) {
-        found_next = false;
-        for (std::size_t i = 0; i < pdgId.size(); i++) {
-            if (genPartIdxMother[i] != current) continue;
-            if (std::abs(pdgId[i]) == 15) { // tau self-copy, keep walking
-                current = i;
-                found_next = true;
-                break;
-            }
-        }
-    }
-
     for (std::size_t i = 0; i < pdgId.size(); i++) {
-        if (genPartIdxMother[i] != current) continue;
+        if (genPartIdxMother[i] != tau_idx) continue;
         int abs_pdg = std::abs(pdgId[i]);
         if (abs_pdg == 11) return {0, static_cast<int>(i)}; // tau -> e
         if (abs_pdg == 13) return {1, static_cast<int>(i)}; // tau -> mu
     }
 
     return {2, tau_idx}; // tau -> h
+}
+
+// Returns the index of the collection object closest to the target within a max DeltaR
+int GetClosestIdx(float target_eta, float target_phi, RVecF& collection_eta, RVecF& collection_phi, float maxDR) 
+{
+    float min_dR2 = maxDR * maxDR;
+    int closestIdx = -1;
+
+    for (std::size_t i = 0; i < collection_eta.size(); i++) {
+        float dEta = collection_eta[i] - target_eta;
+        float dPhi = std::abs(collection_phi[i] - target_phi);
+        if (dPhi > M_PI) dPhi = 2.0 * M_PI - dPhi;
+
+        float dR2 = dEta * dEta + dPhi * dPhi;
+        if (dR2 < min_dR2) {
+            min_dR2 = dR2;
+            closestIdx = i;
+        }
+    }
+
+    return closestIdx;
+
+}
+
+// Returns the index of the GenVisTau collection associated to the genTau
+int GetGenVisTau(int tau_idx, RVecS& GenVisTau_genPartIdxMother)
+{
+    for (std::size_t i = 0; i < GenVisTau_genPartIdxMother.size(); i++) {
+        if (GenVisTau_genPartIdxMother[i] == tau_idx) {
+            return i;
+        }
+    }
+    return -1;
 }

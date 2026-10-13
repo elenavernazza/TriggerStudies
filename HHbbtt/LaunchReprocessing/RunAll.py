@@ -3,9 +3,9 @@ import os, argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for RunAll.py')
     parser.add_argument('--menu', type=str, choices=['HLT', 'NGT', 'NGTFullTrack'], default='HLT', help='Menu to run (default: %(default)s).')
-    parser.add_argument('--start-from', type=int, default=-1, help='Start number (Default: 0)')
+    parser.add_argument('--n-events', type=int, default=-1, help='Number of events per file to process (Default: all)')
+    parser.add_argument('--start-from', type=int, default=0, help='Start number (Default: 0)')
     parser.add_argument('--n-files', type=int, default=None, help='Number of files to process (Default: all)')
-    parser.add_argument('--n-events', type=int, default=None, help='Number of events per file to process (Default: all)')
     parser.add_argument('--n-threads', type=int, default=0, help='Number of threads (Default: 0)')
     parser.add_argument('--dry-run', type=bool, default=False, help='Only print configuration, without running (Default: false)')
     parser.add_argument('--out-dir', type=str, default='./', help='Output directory (Default: ./)')
