@@ -11,8 +11,10 @@ if __name__ == '__main__':
     parser.add_argument('--skip-histos', action='store_true', required=False, help='Skip histogram creation.')
     parser.add_argument('--histo-dir', default='Dataframes', help='Output directory for the merged dataframe and histograms.')
     parser.add_argument('--plots-dir', default='Plots_Acceptance', help='Output directory for the plots.')
+    parser.add_argument('--tau-hlt-trig', type=str, choices=['DeepTau', 'ParT'], default='DeepTau', help='Tau reconstruction strateggy (default: %(default)s).')
     args = parser.parse_args()
 
+    tau_hlt_trig = args.tau_hlt_trig
     script_dir = os.path.dirname(os.path.abspath(__file__))
     histo_dir = script_dir + "/" + args.histo_dir
     os.makedirs(histo_dir, exist_ok=True)
@@ -22,13 +24,13 @@ if __name__ == '__main__':
     # Prepare the merged dataframe from NGT and HLT input files
     ##############################################################
 
-    path_df = f"{histo_dir}/df_ngt_hlt.root"
+    path_df = f"{histo_dir}/df_ngt_hlt_DeepTau.root"
 
     if not args.skip_merging:
 
-        base_dir_hlt = "/data/evernazz/NanoAOD/SummerStudent/2026_10_08/CMSSW_17_0_0_pre6/src/AAA_Test/OldProduction/HLTMenu_ParT/"
-        base_dir_ngt = "/data/evernazz/NanoAOD/SummerStudent/2026_10_08/CMSSW_17_0_0_pre6/src/AAA_Test/OldProduction/NGTScoutingFullTracking/"
-        df = merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args)
+        base_dir_hlt = "/data/evernazz/NanoAOD/SummerStudent/2026_10_08/CMSSW_17_0_0_pre6/src/AAA_Test/TriggerStudies/HHbbtt/LaunchReprocessing/DeepTau/HLTMenu"
+        base_dir_ngt_DeepTau = "/data/evernazz/NanoAOD/SummerStudent/2026_10_08/CMSSW_17_0_0_pre6/src/AAA_Test/TriggerStudies/HHbbtt/LaunchReprocessing/DeepTau/NGTMenu"
+        df = merge_hlt_ngt(base_dir_hlt, base_dir_ngt_DeepTau, path_df, args)
 
     else:
 
@@ -55,7 +57,7 @@ if __name__ == '__main__':
         print(f"[INFO] Total entries after filtering for events with two b-jets (pT > 10 GeV): {df.Filter("has_two_bjets").Count().GetValue()}")
 
         # Acceptance of NGT Scouting
-        df = df.Define("pass_NGT", "DST_NGTScouting")
+        df = df.Define("pass_NGT", "DST_PFScouting")
 
         ##############################################################
         # Define channels
@@ -83,7 +85,7 @@ if __name__ == '__main__':
         df_tautau = df.Filter("ch_tautau")
         df_tautau = FindGenFinalState(df_tautau, "tautau")
         L1_seeds = ["L1_pDoublePuppiTau52_52_final"]
-        HLT_paths = ["HLT_DoubleMediumDeepTauPFTauHPS35_eta2p1"]
+        HLT_paths = ["HLT_DoubleMediumDeepTauPFTauHPS35_eta2p1"] if tau_hlt_trig == "DeepTau" else ["HLT_DoubleMediumPFPuppiParTTauh30_eta2p1"]
         df_tautau = df_tautau.Define("pass_L1", "{}".format(" || ".join(L1_seeds)))
         df_tautau = df_tautau.Define("pass_HLT", "{}".format(" || ".join(HLT_paths)))
 
@@ -92,10 +94,10 @@ if __name__ == '__main__':
     ##############################################################
 
     variables_dict = {
-        "mass": ["mass [GeV]", r"Mass [GeV]", 100, 0, 1000],
-        "pt": ["p_{T} [GeV]", r"p_{T} [GeV]", 100, 0, 500],
-        "eta": ["#eta", r"\eta", 100, -5, 5],
-        "phi": ["#phi", r"\phi", 100, -3.14, 3.14]
+        "mass": ["mass [GeV]", r"Mass [GeV]", 50, 0, 1000],
+        "pt": ["p_{T} [GeV]", r"p_{T} [GeV]", 50, 0, 500],
+        "eta": ["#eta", r"\eta", 50, -5, 5],
+        "phi": ["#phi", r"\phi", 50, -3.14, 3.14]
     }
 
     common_obj_labels = {
@@ -127,8 +129,8 @@ if __name__ == '__main__':
         # Save histograms to root file
         ##############################################################
 
-        print(f"[INFO] Saving histograms to {histo_dir}/Acceptance.root")
-        histos_file = ROOT.TFile(f"{histo_dir}/Acceptance.root", "RECREATE")
+        print(f"[INFO] Saving histograms to {histo_dir}/Acceptance_{tau_hlt_trig}.root")
+        histos_file = ROOT.TFile(f"{histo_dir}/Acceptance_{tau_hlt_trig}.root", "RECREATE")
 
         for df_ch, channel in zip( [df_etau, df_mutau, df_tautau],
                                    ["etau", "mutau", "tautau"]):
@@ -157,15 +159,18 @@ if __name__ == '__main__':
     # Plot histograms
     ##############################################################
 
-    plots_dir = script_dir + "/" + args.plots_dir
+    plots_dir = script_dir + "/" + args.plots_dir + "_" + tau_hlt_trig
     os.makedirs(plots_dir, exist_ok=True)
     print(f"[INFO] Output directory for plots: {plots_dir}")
 
     # Open root file with histograms
-    histos_file = ROOT.TFile(f"{histo_dir}/Acceptance.root", "READ")
+    histos_file = ROOT.TFile(f"{histo_dir}/Acceptance_{tau_hlt_trig}.root", "READ")
 
     for channel, ch_title in zip(   ["etau", "mutau", "tautau"],
                                     [r"$\tau_{e}\tau_{h}$", r"$\tau_{\mu}\tau_{h}$", r"$\tau_{h}\tau_{h}$"]):
+
+        plots_dir_ch = script_dir + "/" + args.plots_dir + "_" + tau_hlt_trig + "/" + channel
+        os.makedirs(plots_dir_ch, exist_ok=True)
 
         for var, (label_root, label_latex, bins, min_val, max_val) in variables_dict.items():
             obj_labels = {**common_obj_labels, **channel_obj_labels[channel]}
@@ -187,17 +192,17 @@ if __name__ == '__main__':
 
                     centers, contents, errors = hist_to_numpy(hist)
                     hep.histplot(contents, edges, ax=ax, color=selection_dict[sel_name][1], histtype=selection_dict[sel_name][2], alpha=selection_dict[sel_name][3], zorder=selection_dict[sel_name][4])
-                    ax.errorbar(centers, contents, yerr=errors, fmt="o", markersize=3, capsize=2, color=selection_dict[sel_name][1], label=selection_dict[sel_name][0], zorder=selection_dict[sel_name][4])
+                    ax.errorbar(centers, contents, yerr=errors, fmt="o", markersize=3, capsize=2, color=selection_dict[sel_name][1], zorder=selection_dict[sel_name][4], label=f"{selection_dict[sel_name][0]} = {hist.GetEntries()}")
 
                 ax.set_xlabel(f"{obj_labels[obj]} {label_latex}")
                 ax.set_ylabel("Events")
-                ax.legend(frameon=False, loc="upper right", title=f"Channel {ch_title}", title_fontsize=20, fontsize=20, alignment="left")
+                ax.legend(frameon=False, loc="upper right", title=f"Channel {ch_title} ({tau_hlt_trig})", title_fontsize=20, fontsize=20, alignment="left")
                 ax.set_xlim(min_val, max_val)
                 ax.grid(True, alpha=0.75, linestyle="dashdot", linewidth=0.75)
 
                 fig.tight_layout()
 
-                out_path = f"{plots_dir}/Ch_{channel}_{obj}_{var}"
+                out_path = f"{plots_dir_ch}/{obj}_{var}"
                 print(f"[INFO] Saving plot: {out_path}")
                 fig.savefig(out_path + ".png", dpi=150)
                 fig.savefig(out_path + ".pdf", dpi=150)

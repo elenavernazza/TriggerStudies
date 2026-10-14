@@ -42,5 +42,6 @@ python3 RunAll.py --menu NGT --start-from 0 --n-files 10 --out-dir ParT  # --dry
 ### 3. Run the trigger acceptance comparison
 ```
 cd ..
-python3 CompareAcceptance.py --max-files 10
+python3 CompareAcceptance.py --skip-merging --tau-hlt-trig DeepTau
+python3 CompareAcceptance.py --skip-merging --tau-hlt-trig ParT
 ```
