@@ -21,7 +21,7 @@ if __name__ == '__main__':
     n_threads = args.n_threads
 
     if args.menu == "HLT":
-        out_dir = args.out_dir + 'HLTMenu'
+        out_dir = args.out_dir + '/HLTMenu'
         print(f"[INFO] Running re-processing with standard HLT menu, output in {out_dir}")
         os.makedirs(out_dir, exist_ok=True)
         for i, i_line in enumerate(in_files[start_from:start_from+n_files]):
@@ -45,7 +45,7 @@ if __name__ == '__main__':
                 os.system(cmd2)
 
     elif args.menu == "NGT":
-        out_dir = args.out_dir + 'NGTMenu'
+        out_dir = args.out_dir + '/NGTMenu'
         print(f"[INFO] Running re-processing with NGT Scouting menu, output in {out_dir}")
         os.makedirs(out_dir, exist_ok=True)
         for i, i_line in enumerate(in_files[start_from:start_from+n_files]):
@@ -68,7 +68,7 @@ if __name__ == '__main__':
                 os.system(cmd1)
                 os.system(cmd2)
 
-    elif args.menu == "NGTFullTrack":
+    elif args.menu == "/NGTFullTrack":
         out_dir = args.out_dir + 'NGTFullTrackMenu'
         print(f"[INFO] Running re-processing with NGT Scouting menu, output in {out_dir}")
         os.makedirs(out_dir, exist_ok=True)

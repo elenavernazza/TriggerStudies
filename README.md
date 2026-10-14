@@ -21,8 +21,8 @@ Run the reprocessing for HLT and NGT Scouting menus:
 ```
 cd TriggerStudies/HHbbtt/LaunchReprocessing
 voms-proxy-init -voms cms -rfc -valid 192:00
-python3 RunAll.py --menu HLT --start-from 0 --n-files 10 # --dry-run 1
-python3 RunAll.py --menu NGT --start-from 0 --n-files 10 # --dry-run 1
+python3 RunAll.py --menu HLT --start-from 0 --n-files 10 --out-dir DeepTau # --dry-run 1
+python3 RunAll.py --menu NGT --start-from 0 --n-files 10 --out-dir DeepTau # --dry-run 1
 ```
 
 ### 2. Set-up the new developments (ParT)
@@ -36,7 +36,7 @@ scram b -j
 Run the reprocessing for HLT and NGT Scouting menus:
 ```
 cd TriggerStudies/HHbbtt/LaunchReprocessing
-python3 RunAll.py --menu NGT --start-from 0 --n-files 10 # --dry-run 1
+python3 RunAll.py --menu NGT --start-from 0 --n-files 10 --out-dir ParT  # --dry-run 1
 ```
 
 ### 3. Run the trigger acceptance comparison
