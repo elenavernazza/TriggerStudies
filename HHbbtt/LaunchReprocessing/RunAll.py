@@ -7,7 +7,7 @@ if __name__ == '__main__':
     parser.add_argument('--start-from', type=int, default=0, help='Start number (Default: 0)')
     parser.add_argument('--n-files', type=int, default=None, help='Number of files to process (Default: all)')
     parser.add_argument('--n-threads', type=int, default=0, help='Number of threads (Default: 0)')
-    parser.add_argument('--dry-run', type=bool, default=False, help='Only print configuration, without running (Default: false)')
+    parser.add_argument('--dry-run', action='store_true', help='Only print configuration, without running (Default: false)')
     parser.add_argument('--out-dir', type=str, default='./', help='Output directory (Default: ./)')
     args = parser.parse_args()
 

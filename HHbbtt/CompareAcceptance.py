@@ -129,8 +129,8 @@ if __name__ == '__main__':
         # Save histograms to root file
         ##############################################################
 
-        print(f"[INFO] Saving histograms to {histo_dir}/Acceptance_{tau_hlt_trig}.root")
-        histos_file = ROOT.TFile(f"{histo_dir}/Acceptance_{tau_hlt_trig}.root", "RECREATE")
+        print(f"[INFO] Saving histograms to {histo_dir}/histos_acceptance_{tau_hlt_trig}.root")
+        histos_file = ROOT.TFile(f"{histo_dir}/histos_acceptance_{tau_hlt_trig}.root", "RECREATE")
 
         for df_ch, channel in zip( [df_etau, df_mutau, df_tautau],
                                    ["etau", "mutau", "tautau"]):
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     print(f"[INFO] Output directory for plots: {plots_dir}")
 
     # Open root file with histograms
-    histos_file = ROOT.TFile(f"{histo_dir}/Acceptance_{tau_hlt_trig}.root", "READ")
+    histos_file = ROOT.TFile(f"{histo_dir}/histos_acceptance_{tau_hlt_trig}.root", "READ")
 
     for channel, ch_title in zip(   ["etau", "mutau", "tautau"],
                                     [r"$\tau_{e}\tau_{h}$", r"$\tau_{\mu}\tau_{h}$", r"$\tau_{h}\tau_{h}$"]):
