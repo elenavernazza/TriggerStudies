@@ -37,6 +37,31 @@ def hist_to_numpy(hist):
     errors = np.array([hist.GetBinError(i) for i in range(1, n + 1)])
     return centers, contents, errors
 
+def merge_hlt(base_dir_hlt, path_df, args):
+
+    files_hlt_all = glob.glob(base_dir_hlt + "/step2_*.root")
+    if args.max_files is not None:
+        files_hlt_all = files_hlt_all[:args.max_files]
+
+    files_hlt = files_with_events(files_hlt_all)
+    chain_hlt = make_chain(files_hlt)
+    df = ROOT.RDataFrame(chain_hlt)
+    
+    print(f"Total entries in chain HLT: {df.Count().GetValue()}")
+
+    snapshot_columns = ROOT.vector(str)()
+    for column in df.GetColumnNames():
+        snapshot_columns.push_back(column)
+
+    print(f"[INFO] Saving merged dataframe")
+
+    snapshot_options = ROOT.RDF.RSnapshotOptions()
+    snapshot_options.fCompressionAlgorithm = ROOT.RCompressionSetting.EAlgorithm.kLZ4
+    snapshot_options.fCompressionLevel = 4
+    df.Snapshot("Events", path_df, snapshot_columns, snapshot_options)
+
+    return df
+
 def merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args):
 
     files_hlt_all = glob.glob(base_dir_hlt + "/step2_*.root")
@@ -58,12 +83,32 @@ def merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args):
     print(f"Total entries in chain HLT: {df_hlt.Count().GetValue()}")
     print(f"Total entries in chain NGT: {df_ngt.Count().GetValue()}")
 
-    cols_ngt_filtered = [str(c) for c in df_ngt.GetColumnNames() if not str(c).startswith("HLT_")]
+    # NGT side: everything except HLT_*/L1_* (those come from the HLT file).
+    cols_ngt_filtered = [str(c) for c in df_ngt.GetColumnNames() if not (str(c).startswith("HLT_") or str(c).startswith("L1_"))]
     print(f"[INFO] Keeping {len(cols_ngt_filtered)} NGT columns for merging.")
-    cols_hlt_filtered = [str(c) for c in df_hlt.GetColumnNames() if str(c).startswith("HLT_") and not str(c).endswith("_pHLT")]
+    # HLT side: only HLT_*/L1_* without the _pHLT suffix.
+    cols_hlt_filtered = [str(c) for c in df_hlt.GetColumnNames() if ((str(c).startswith("HLT_") or str(c).startswith("L1_")) and not str(c).endswith("_pHLT"))]
     print(f"[INFO] Keeping {len(cols_hlt_filtered)} HLT columns for merging.")
 
-    chain_ngt.AddFriend(chain_hlt)
+    snapshot_options = ROOT.RDF.RSnapshotOptions()
+    snapshot_options.fCompressionAlgorithm = ROOT.RCompressionSetting.EAlgorithm.kLZ4
+    snapshot_options.fCompressionLevel = 4
+
+    # The two productions contain the same events but in DIFFERENT order, so a
+    # positional friend would misalign them. Dump the (small) HLT column subset
+    # into a single temp tree and build a (run,event) index on it for an exact
+    # match (a single tree gets a TTreeIndex, which sorts internally and works
+    # even though the entries are unordered).
+    tmp_hlt = path_df.replace(".root", "_tmp_hlt_index.root")
+    vec_hlt = ROOT.vector(str)()
+    for c in ["run", "event"] + cols_hlt_filtered:
+        vec_hlt.push_back(c)
+    df_hlt.Snapshot("Events", tmp_hlt, vec_hlt, snapshot_options)
+
+    chain_hlt_idx = ROOT.TChain("Events")
+    chain_hlt_idx.Add(tmp_hlt)
+    chain_hlt_idx.BuildIndex("run", "event")
+    chain_ngt.AddFriend(chain_hlt_idx)
     df = ROOT.RDataFrame(chain_ngt)
 
     snapshot_columns = ROOT.vector(str)()
@@ -71,13 +116,11 @@ def merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args):
         snapshot_columns.push_back(column)
 
     print(f"[INFO] Saving merged dataframe")
-
-    snapshot_options = ROOT.RDF.RSnapshotOptions()
-    snapshot_options.fCompressionAlgorithm = ROOT.RCompressionSetting.EAlgorithm.kLZ4
-    snapshot_options.fCompressionLevel = 4
     df.Snapshot("Events", path_df, snapshot_columns, snapshot_options)
 
-    return df
+    os.remove(tmp_hlt)
+    
+    return ROOT.RDataFrame("Events", path_df)
 
 def FindHHGenObjects(df):
 
