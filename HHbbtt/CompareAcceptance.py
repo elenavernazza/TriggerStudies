@@ -6,6 +6,8 @@ from Utils import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for CompareAcceptance.py')
+    parser.add_argument('--in-dir-hlt', type=str, default='./LaunchReprocessing/DeepTau/HLTMenu', help='Input directory to step2 rot files with HLT menu.')
+    parser.add_argument('--in-dir-ngt', type=str, default='./LaunchReprocessing/ParT/NGTMenu', help='Input directory to step2 rot files with NGT menu.')
     parser.add_argument('--max-files', type=int, default=None, help='Maximum number of files to process.')
     parser.add_argument('--skip-merging', action='store_true', required=False, help='Skip merging of NGT and HLT input files.')
     parser.add_argument('--skip-histos', action='store_true', required=False, help='Skip histogram creation.')
@@ -28,10 +30,12 @@ if __name__ == '__main__':
 
     if not args.skip_merging:
 
-        base_dir_hlt = "/data/evernazz/NanoAOD/SummerStudent/2026_10_08/CMSSW_17_0_0_pre6/src/AAA_Test/TriggerStudies/HHbbtt/LaunchReprocessing/DeepTau/HLTMenu"
-        base_dir_ngt_DeepTau = "/data/evernazz/NanoAOD/SummerStudent/2026_10_08/CMSSW_17_0_0_pre6/src/AAA_Test/TriggerStudies/HHbbtt/LaunchReprocessing/DeepTau/NGTMenu"
-        df = merge_hlt_ngt(base_dir_hlt, base_dir_ngt_DeepTau, path_df, args)
-
+        base_dir_hlt = args.in_dir_hlt
+        base_dir_ngt = args.in_dir_ngt
+        print(f"[INFO] Reading HLT root files from {base_dir_hlt}")
+        print(f"[INFO] Reading HLT root files from {base_dir_ngt}")
+        df = merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args)
+        
     else:
 
         df = ROOT.RDataFrame("Events", path_df)
@@ -56,8 +60,9 @@ if __name__ == '__main__':
         df = df.Define("has_two_bjets", "(bjet1_idx != -1) && (bjet2_idx != -1) && (bjet1_idx != bjet2_idx)")
         print(f"[INFO] Total entries after filtering for events with two b-jets (pT > 10 GeV): {df.Filter("has_two_bjets").Count().GetValue()}")
 
-        # Acceptance of NGT Scouting
-        df = df.Define("pass_NGT", "DST_PFScouting")
+        # Acceptance of NGT Scouting (OR of all L1 seeds)
+        all_L1_seeds = [str(c) for c in df.GetColumnNames() if ((str(c).startswith("L1_")) and (not str(c).endswith("_pHLT")))]
+        df = df.Define("pass_NGT", "{}".format(" || ".join(all_L1_seeds)))
 
         ##############################################################
         # Define channels
@@ -135,12 +140,13 @@ if __name__ == '__main__':
         for df_ch, channel in zip( [df_etau, df_mutau, df_tautau],
                                    ["etau", "mutau", "tautau"]):
 
+            channel_dir = histos_file.mkdir(f"Ch_{channel}")
+
             for selection, sel_name in zip( ["true", "pass_L1", "pass_HLT", "pass_NGT"],
                                             ["All", "PassL1", "PassHLT", "PassNGT"]):
 
                 # Create subdirectory (mkdir with a path works from the file root)
-                histo_subdir = histos_file.mkdir(f"Ch_{channel}/{sel_name}")
-                histo_subdir.cd()
+                histo_subdir = channel_dir.mkdir(f"{sel_name}")
 
                 histos = {}
                 for var, (label_root, label_latex, bins, min_val, max_val) in variables_dict.items():
@@ -150,8 +156,8 @@ if __name__ == '__main__':
                         histos[f"{obj}_{var}"] = df_ch.Filter(selection).Histo1D((f"{obj}_{var}", f"{obj}_{var};{obj_labels[obj]} {label_root};Events", bins, min_val, max_val), f"{obj}_{var}")
 
                 for name, histo in sorted(histos.items()):
-                    histo.Write()
-                    print(f"[INFO] Saved histogram: {name}")
+                    histo_subdir.WriteObject(histo.GetValue(), name)
+                    # print(f"[DEBUG] Saved histogram: {name}")
 
         histos_file.Close()
 
