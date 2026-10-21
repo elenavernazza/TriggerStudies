@@ -1,5 +1,5 @@
 import ROOT
-import glob, os, argparse
+import glob, os, argparse, re
 from pathlib import Path
 import numpy as np
 
@@ -64,8 +64,8 @@ def merge_hlt(base_dir_hlt, path_df, args):
 
 def merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args):
 
-    files_hlt_all = glob.glob(base_dir_hlt + "/step2_*.root")
-    files_ngt_all = glob.glob(base_dir_ngt + "/step2_*.root")
+    files_hlt_all = sorted(glob.glob(base_dir_hlt + "/step2_*.root"))
+    files_ngt_all = sorted(glob.glob(base_dir_ngt + "/step2_*.root"))
 
     if args.max_files is not None:
         files_hlt_all = files_hlt_all[:args.max_files]
@@ -76,7 +76,6 @@ def merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args):
 
     chain_hlt = make_chain(files_hlt)
     chain_ngt = make_chain(files_ngt)
-
     df_hlt = ROOT.RDataFrame(chain_hlt)
     df_ngt = ROOT.RDataFrame(chain_ngt)
 
@@ -94,22 +93,47 @@ def merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args):
     snapshot_options.fCompressionAlgorithm = ROOT.RCompressionSetting.EAlgorithm.kLZ4
     snapshot_options.fCompressionLevel = 4
 
-    # The two productions contain the same events but in DIFFERENT order, so a
-    # positional friend would misalign them. Dump the (small) HLT column subset
-    # into a single temp tree and build a (run,event) index on it for an exact
-    # match (a single tree gets a TTreeIndex, which sorts internally and works
-    # even though the entries are unordered).
-    tmp_hlt = path_df.replace(".root", "_tmp_hlt_index.root")
-    vec_hlt = ROOT.vector(str)()
-    for c in ["run", "event"] + cols_hlt_filtered:
-        vec_hlt.push_back(c)
-    df_hlt.Snapshot("Events", tmp_hlt, vec_hlt, snapshot_options)
+    # The two productions contain the same events but in DIFFERENT order.
+    # TChain::AddFriend (with or without a (run,event) index) does NOT work here:
+    # RDataFrame reads the friend POSITIONALLY and ignores the friend's TTreeIndex.
+    # The only exact method inside RDataFrame is an explicit (run,event) lookup:
+    # build a C++ map (run,event)->HLT row, then set each HLT column by lookup.
+    hlt_data = df_hlt.AsNumpy(["run", "event"] + cols_hlt_filtered)
+    keys = list(zip(hlt_data["run"].tolist(), hlt_data["event"].tolist()))
+    col_values = {c: hlt_data[c].tolist() for c in cols_hlt_filtered}
 
-    chain_hlt_idx = ROOT.TChain("Events")
-    chain_hlt_idx.Add(tmp_hlt)
-    chain_hlt_idx.BuildIndex("run", "event")
-    chain_ngt.AddFriend(chain_hlt_idx)
-    df = ROOT.RDataFrame(chain_ngt)
+    # Global C++ map: key = run*1e9 + event, value = row index in the HLT arrays.
+    ROOT.gInterpreter.Declare("#include <unordered_map>\n#include <vector>\nstd::unordered_map<long long, long long> g_hlt_row;")
+    fill = "\n".join(
+        f"g_hlt_row[(long long){int(r)}*1000000000LL + (long long){int(e)}] = {i}LL;"
+        for i, (r, e) in enumerate(keys)
+    )
+    ROOT.gInterpreter.ProcessLine(fill)
+
+    # For each HLT column, declare a C++ array of values and set it by lookup.
+    # Use Redefine where the NGT chain already has the branch, Define otherwise.
+    ngt_colnames = set(str(c) for c in df_ngt.GetColumnNames())
+    df = df_ngt
+    for c in cols_hlt_filtered:
+        vals = col_values[c]
+        arr_name = "g_hlt_" + c
+        if np.issubdtype(hlt_data[c].dtype, np.bool_):
+            cpp_type = "bool"
+        elif np.issubdtype(hlt_data[c].dtype, np.integer):
+            cpp_type = "int"
+        else:
+            cpp_type = "float"
+        decl = f"std::vector<{cpp_type}> {arr_name} = {{"
+        decl += ",".join((str(int(v)) if cpp_type != "float" else repr(float(v))) for v in vals)
+        decl += "};"
+        ROOT.gInterpreter.Declare(decl)
+        expr = f"""
+            long long key = (long long)run * 1000000000LL + (long long)event;
+            auto it = g_hlt_row.find(key);
+            return (it != g_hlt_row.end()) ? {arr_name}[it->second] : ({cpp_type})-1;
+        """
+        # Replace the NGT's own HLT value with the aligned HLT-file value.
+        df = df.Redefine(c, expr) if c in ngt_colnames else df.Define(c, expr)
 
     snapshot_columns = ROOT.vector(str)()
     for column in cols_ngt_filtered + cols_hlt_filtered:
@@ -118,8 +142,6 @@ def merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args):
     print(f"[INFO] Saving merged dataframe")
     df.Snapshot("Events", path_df, snapshot_columns, snapshot_options)
 
-    os.remove(tmp_hlt)
-    
     return ROOT.RDataFrame("Events", path_df)
 
 def FindHHGenObjects(df):
