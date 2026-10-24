@@ -42,6 +42,34 @@ python3 RunAll.py --menu NGT --start-from 0 --n-files 10 --out-dir ParT  # --dry
 ### 3. Run the trigger acceptance comparison
 ```
 cd ..
-python3 CompareAcceptance.py --tau-hlt-trig DeepTau # --max-files 2 --skip-mergin --skip-histos
-python3 CompareAcceptance.py --tau-hlt-trig ParT # --max-files 2 --skip-mergin --skip-histos
+python3 CompareAcceptance.py \
+ --histo-dir Dataframes \
+ --plots-dir Plots_Acceptance \
+ --in-dir <path_to>/HLTMenu/OutNano \
+ --tau-hlt-trig DeepTau
+python3 CompareAcceptance.py \
+ --histo-dir Dataframes \
+ --plots-dir Plots_Acceptance \
+ --in-dir <path_to>/HLTMenu/OutNano \
+ --tau-hlt-trig ParT
+```
+
+### 4. Run the trigger reconstruction efficiency comparison
+```
+python3 ReconstructionEfficiency.py \
+ --tau-reco DeepTau --in-dir <path_to>/NGTMenu_DeepTau_FullTracking/OutNano/ \
+ --histo-dir Dataframes_FullTracking \
+ --plots-dir Plots_RecoEff_FullTracking
+python3 ReconstructionEfficiency.py \
+ --tau-reco DeepTau --in-dir <path_to>/NGTMenu_DeepTau_PixelTracking/OutNano/ \
+ --histo-dir Dataframes_PixelTracking \
+ --plots-dir Plots_RecoEff_PixelTracking
+python3 ReconstructionEfficiency.py \
+ --tau-reco ParT --in-dir <path_to>/NGTMenu_ParT_FullTracking/OutNano/ \
+ --histo-dir Dataframes_FullTracking \
+ --plots-dir Plots_RecoEff_FullTracking
+python3 ReconstructionEfficiency.py \
+ --tau-reco ParT --in-dir <path_to>/NGTMenu_ParT_PixelTracking/OutNano/ \
+ --histo-dir Dataframes_PixelTracking \
+ --plots-dir Plots_RecoEff_PixelTracking
 ```
