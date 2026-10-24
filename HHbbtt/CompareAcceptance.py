@@ -6,10 +6,8 @@ from Utils import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arguments for CompareAcceptance.py')
-    parser.add_argument('--in-dir-hlt', type=str, default='./LaunchReprocessing/DeepTau/HLTMenu', help='Input directory to step2 rot files with HLT menu.')
-    parser.add_argument('--in-dir-ngt', type=str, default='./LaunchReprocessing/ParT/NGTMenu', help='Input directory to step2 rot files with NGT menu.')
+    parser.add_argument('--in-dir', type=str, default='./LaunchReprocessing/DeepTau/HLTMenu', help='Input directory to step2 rot files with HLT menu.')
     parser.add_argument('--max-files', type=int, default=None, help='Maximum number of files to process.')
-    parser.add_argument('--skip-merging', action='store_true', required=False, help='Skip merging of NGT and HLT input files.')
     parser.add_argument('--skip-histos', action='store_true', required=False, help='Skip histogram creation.')
     parser.add_argument('--histo-dir', default='Dataframes', help='Output directory for the merged dataframe and histograms.')
     parser.add_argument('--plots-dir', default='Plots_Acceptance', help='Output directory for the plots.')
@@ -18,7 +16,7 @@ if __name__ == '__main__':
 
     tau_hlt_trig = args.tau_hlt_trig
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    histo_dir = script_dir + "/" + args.histo_dir
+    histo_dir = script_dir + "/Output/" + args.histo_dir
     os.makedirs(histo_dir, exist_ok=True)
     print(f"[INFO] Output directory for the merged dataframe and histograms: {histo_dir}")
 
@@ -26,19 +24,11 @@ if __name__ == '__main__':
     # Prepare the merged dataframe from NGT and HLT input files
     ##############################################################
 
-    path_df = f"{histo_dir}/df_ngt_hlt_DeepTau.root"
+    path_df = f"{histo_dir}/df_hlt.root"
 
-    if not args.skip_merging:
-
-        base_dir_hlt = args.in_dir_hlt
-        base_dir_ngt = args.in_dir_ngt
-        print(f"[INFO] Reading HLT root files from {base_dir_hlt}")
-        print(f"[INFO] Reading HLT root files from {base_dir_ngt}")
-        df = merge_hlt_ngt(base_dir_hlt, base_dir_ngt, path_df, args)
-        
-    else:
-
-        df = ROOT.RDataFrame("Events", path_df)
+    base_dir_hlt = args.in_dir
+    print(f"[INFO] Reading HLT root files from {base_dir_hlt}")
+    df = merge_hlt(base_dir_hlt, path_df, args)
 
     # # DEBUG
     # print("Available branches: ")
@@ -57,8 +47,9 @@ if __name__ == '__main__':
         # df.Display(["b1_eta", "b1_phi", "b1_pt", "bjet1_idx", "bjet1_partFlav"], 50).Print()
         # df.Display(["b2_eta", "b2_phi", "b2_pt", "bjet2_idx", "bjet2_partFlav"], 50).Print()
 
-        df = df.Define("has_two_bjets", "(bjet1_idx != -1) && (bjet2_idx != -1) && (bjet1_idx != bjet2_idx)")
-        print(f"[INFO] Total entries after filtering for events with two b-jets (pT > 10 GeV): {df.Filter("has_two_bjets").Count().GetValue()}")
+        # # DEBUG
+        # df = df.Define("has_two_bjets", "(bjet1_idx != -1) && (bjet2_idx != -1) && (bjet1_idx != bjet2_idx)")
+        # print(f"[INFO] Total entries after filtering for events with two b-jets (pT > 10 GeV): {df.Filter("has_two_bjets").Count().GetValue()}")
 
         # Acceptance of NGT Scouting (OR of all L1 seeds)
         all_L1_seeds = [str(c) for c in df.GetColumnNames() if ((str(c).startswith("L1_")) and (not str(c).endswith("_pHLT")))]
@@ -95,37 +86,45 @@ if __name__ == '__main__':
         df_tautau = df_tautau.Define("pass_HLT", "{}".format(" || ".join(HLT_paths)))
 
     ##############################################################
-    # Prepare plotting variable
+    # Prepare plotting variables
     ##############################################################
 
     variables_dict = {
         "mass": ["mass [GeV]", r"Mass [GeV]", 50, 0, 1000],
-        "pt": ["p_{T} [GeV]", r"p_{T} [GeV]", 50, 0, 500],
-        "eta": ["#eta", r"\eta", 50, -5, 5],
-        "phi": ["#phi", r"\phi", 50, -3.14, 3.14]
+        "pt": ["p_{T} [GeV]", r"$p_{T}$ [GeV]", 50, 0, 500],
+        "eta": ["#eta", r"$\eta$", 50, -5, 5],
+        "phi": ["#phi", r"$\phi$", 50, -3.14, 3.14]
     }
 
     common_obj_labels = {
-        "HH": "HH",
-        "Hbb": r"$H_{bb}$",
-        "Htt": r"$H_{\tau\tau}$",
-        "bjet1": r"$b-jet_1$",
-        "bjet2": r"$b-jet_2$",
+        "HH": "Gen HH",
+        "Hbb": r"Gen $H_{bb}$",
+        "Htt": r"Gen $H_{\tau\tau}$",
+        "bjet1": r"Gen $b-jet_1$",
+        "bjet2": r"Gen $b-jet_2$",
     }
 
     channel_obj_labels = {
-        "etau": {"ele": r"$e$", "vistau": r"$\tau_{h}$"},
-        "mutau": {"muon": r"$\mu$", "vistau": r"$\tau_{h}$"},
-        "tautau": {"vistau1": r"$\tau_{h,1}$","vistau2": r"$\tau_{h,2}$"},
+        "etau": {"ele": r"Gen $e$", "vistau": r"Gen $\tau_{h}$"},
+        "mutau": {"muon": r"Gen $\mu$", "vistau": r"Gen $\tau_{h}$"},
+        "tautau": {"vistau1": r"Gen $\tau_{h,1}$","vistau2": r"Gen $\tau_{h,2}$"},
     }
 
     obj_with_mass = ["HH", "Hbb", "Htt"]
 
     selection_dict = {
-        'All': ["All events", "#FEA201", "step", 1.0, 1],
-        'PassL1': ["L1 acceptance", "#80CAFA", "fill", 0.5, 3],
-        'PassHLT': ["HLT acceptance", "#009900", "fill", 0.5, 4],
-        'PassNGT': ["NGT acceptance", "#9437FF", "fill", 0.5, 2],
+        'All': {
+            'def': "true",
+            'label': "All events",      'color': "#FEA201", 'hist': "step", 'alpha': 1.0,   'zorder': 1,    },
+        'PassL1': {
+            'def': "pass_L1",
+            'label': "L1 acceptance",   'color': "#80CAFA", 'hist': "fill", 'alpha': 0.5,   'zorder': 3,    },
+        'PassHLT': {
+            'def': "pass_HLT",
+            'label': "HLT acceptance",  'color': "#009900", 'hist': "fill", 'alpha': 0.5,   'zorder': 4,    },
+        'PassNGT': {
+            'def': "pass_NGT",
+            'label': "NGT acceptance",  'color': "#9437FF", 'hist': "fill", 'alpha': 0.5,   'zorder': 2,    },
     }
 
     if not args.skip_histos:
@@ -142,8 +141,7 @@ if __name__ == '__main__':
 
             channel_dir = histos_file.mkdir(f"Ch_{channel}")
 
-            for selection, sel_name in zip( ["true", "pass_L1", "pass_HLT", "pass_NGT"],
-                                            ["All", "PassL1", "PassHLT", "PassNGT"]):
+            for sel_name in selection_dict.keys():
 
                 # Create subdirectory (mkdir with a path works from the file root)
                 histo_subdir = channel_dir.mkdir(f"{sel_name}")
@@ -153,7 +151,7 @@ if __name__ == '__main__':
                     obj_labels = {**common_obj_labels, **channel_obj_labels[channel]}
                     objects = obj_labels.keys() if var != "mass" else [o for o in obj_labels if o in obj_with_mass]
                     for obj in objects:
-                        histos[f"{obj}_{var}"] = df_ch.Filter(selection).Histo1D((f"{obj}_{var}", f"{obj}_{var};{obj_labels[obj]} {label_root};Events", bins, min_val, max_val), f"{obj}_{var}")
+                        histos[f"{obj}_{var}"] = df_ch.Filter(selection_dict[sel_name]['def']).Histo1D((f"{obj}_{var}", f"{obj}_{var};{obj_labels[obj]} {label_root};Events", bins, min_val, max_val), f"{obj}_{var}")
 
                 for name, histo in sorted(histos.items()):
                     histo_subdir.WriteObject(histo.GetValue(), name)
@@ -165,7 +163,7 @@ if __name__ == '__main__':
     # Plot histograms
     ##############################################################
 
-    plots_dir = script_dir + "/" + args.plots_dir + "_" + tau_hlt_trig
+    plots_dir = script_dir + "/Output/" + args.plots_dir + "_" + tau_hlt_trig
     os.makedirs(plots_dir, exist_ok=True)
     print(f"[INFO] Output directory for plots: {plots_dir}")
 
@@ -175,7 +173,7 @@ if __name__ == '__main__':
     for channel, ch_title in zip(   ["etau", "mutau", "tautau"],
                                     [r"$\tau_{e}\tau_{h}$", r"$\tau_{\mu}\tau_{h}$", r"$\tau_{h}\tau_{h}$"]):
 
-        plots_dir_ch = script_dir + "/" + args.plots_dir + "_" + tau_hlt_trig + "/" + channel
+        plots_dir_ch = plots_dir + "/" + channel
         os.makedirs(plots_dir_ch, exist_ok=True)
 
         for var, (label_root, label_latex, bins, min_val, max_val) in variables_dict.items():
@@ -189,7 +187,7 @@ if __name__ == '__main__':
 
                 edges = np.linspace(min_val, max_val, bins + 1)
 
-                for sel_name in ["All", "PassL1", "PassHLT", "PassNGT"]:
+                for sel_name in selection_dict.keys():
                     
                     hist = histos_file.Get(f"Ch_{channel}/{sel_name}/{obj}_{var}")
                     if not hist:
@@ -197,8 +195,8 @@ if __name__ == '__main__':
                         continue
 
                     centers, contents, errors = hist_to_numpy(hist)
-                    hep.histplot(contents, edges, ax=ax, color=selection_dict[sel_name][1], histtype=selection_dict[sel_name][2], alpha=selection_dict[sel_name][3], zorder=selection_dict[sel_name][4])
-                    ax.errorbar(centers, contents, yerr=errors, fmt="o", markersize=3, capsize=2, color=selection_dict[sel_name][1], zorder=selection_dict[sel_name][4], label=f"{selection_dict[sel_name][0]} = {hist.GetEntries()}")
+                    hep.histplot(contents, edges, ax=ax, color=selection_dict[sel_name]['color'], histtype=selection_dict[sel_name]['hist'], alpha=selection_dict[sel_name]['alpha'], zorder=selection_dict[sel_name]['zorder'])
+                    ax.errorbar(centers, contents, yerr=errors, fmt="o", markersize=3, capsize=2, color=selection_dict[sel_name]['color'], zorder=selection_dict[sel_name]['zorder'], label=f"{selection_dict[sel_name]['label']} = {hist.GetEntries()}")
 
                 ax.set_xlabel(f"{obj_labels[obj]} {label_latex}")
                 ax.set_ylabel("Events")
