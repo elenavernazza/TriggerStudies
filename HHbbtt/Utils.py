@@ -280,7 +280,12 @@ def FindGenFinalState(df, ch):
 
     return df
     
-def FindRecoMataching(df, ch, coll):
+def FindRecoMataching(df, ch, coll, tau_reco):
+
+    if tau_reco == "DeepTau": # from HPS tau
+        tau_dR = 0.1
+    elif tau_reco == "ParT": # from AK4 jets
+        tau_dR = 0.4
 
     df = (df
           # match gen bjet 1 to HLT bjet
@@ -322,7 +327,7 @@ def FindRecoMataching(df, ch, coll):
             .Define("l1_ele_eta", f"{coll["l1"]["ele"]}_eta[l1_ele_idx]")
             .Define("l1_ele_phi", f"{coll["l1"]["ele"]}_phi[l1_ele_idx]")
             # match gen vis tau to HLT tau
-            .Define("hlt_tau_idx", f"GetClosestIdx(vistau_eta, vistau_phi, {coll["hlt"]["tau"]}_eta, {coll["hlt"]["tau"]}_phi, 0.4)")
+            .Define("hlt_tau_idx", f"GetClosestIdx(vistau_eta, vistau_phi, {coll["hlt"]["tau"]}_eta, {coll["hlt"]["tau"]}_phi, {tau_dR})")
             .Define("hlt_tau_pt", f"{coll["hlt"]["tau"]}_pt[hlt_tau_idx]")
             .Define("hlt_tau_eta", f"{coll["hlt"]["tau"]}_eta[hlt_tau_idx]")
             .Define("hlt_tau_phi", f"{coll["hlt"]["tau"]}_phi[hlt_tau_idx]")
@@ -347,7 +352,7 @@ def FindRecoMataching(df, ch, coll):
             .Define("l1_muon_eta", f"{coll["l1"]["muon"]}_eta[l1_muon_idx]")
             .Define("l1_muon_phi", f"{coll["l1"]["muon"]}_phi[l1_muon_idx]")
             # match gen vis tau to HLT tau
-            .Define("hlt_tau_idx", f"GetClosestIdx(vistau_eta, vistau_phi, {coll["hlt"]["tau"]}_eta, {coll["hlt"]["tau"]}_phi, 0.4)")
+            .Define("hlt_tau_idx", f"GetClosestIdx(vistau_eta, vistau_phi, {coll["hlt"]["tau"]}_eta, {coll["hlt"]["tau"]}_phi, {tau_dR})")
             .Define("hlt_tau_pt", f"{coll["hlt"]["tau"]}_pt[hlt_tau_idx]")
             .Define("hlt_tau_eta", f"{coll["hlt"]["tau"]}_eta[hlt_tau_idx]")
             .Define("hlt_tau_phi", f"{coll["hlt"]["tau"]}_phi[hlt_tau_idx]")
@@ -374,13 +379,13 @@ def FindRecoMataching(df, ch, coll):
             .Define("l1_tau1_phi", f"{coll["l1"]["tau"]}_phi[l1_tau1_idx]")
             .Define("l1_tau1_tag", f"{coll["l1"]["tauTag"]}[l1_tau1_idx]")
             # match gen vis tau 2 to HLT tau
-            .Define("hlt_tau2_idx", f"GetClosestIdx(vistau2_eta, vistau2_phi, {coll["hlt"]["tau"]}_eta, {coll["hlt"]["tau"]}_phi, 0.4)")
+            .Define("hlt_tau2_idx", f"GetClosestIdx(vistau2_eta, vistau2_phi, {coll["hlt"]["tau"]}_eta, {coll["hlt"]["tau"]}_phi, {tau_dR})")
             .Define("hlt_tau2_pt", f"{coll["hlt"]["tau"]}_pt[hlt_tau2_idx]")
             .Define("hlt_tau2_eta", f"{coll["hlt"]["tau"]}_eta[hlt_tau2_idx]")
             .Define("hlt_tau2_phi", f"{coll["hlt"]["tau"]}_phi[hlt_tau2_idx]")
             .Define("hlt_tau2_tag", f"{coll["hlt"]["tauTag"]}[hlt_tau2_idx]")
             # match gen vis tau 2 to L1 tau
-            .Define("l1_tau2_idx", f"GetClosestIdx(vistau2_eta, vistau2_phi, {coll["l1"]["tau"]}_eta, {coll["l1"]["tau"]}_phi, 0.4)")
+            .Define("l1_tau2_idx", f"GetClosestIdx(vistau2_eta, vistau2_phi, {coll["l1"]["tau"]}_eta, {coll["l1"]["tau"]}_phi, {tau_dR})")
             .Define("l1_tau2_pt", f"{coll["l1"]["tau"]}_pt[l1_tau2_idx]")
             .Define("l1_tau2_eta", f"{coll["l1"]["tau"]}_eta[l1_tau2_idx]")
             .Define("l1_tau2_phi", f"{coll["l1"]["tau"]}_phi[l1_tau2_idx]")

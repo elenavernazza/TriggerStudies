@@ -144,3 +144,17 @@ int GetGenVisTau(int tau_idx, RVecS& GenVisTau_genPartIdxMother)
     }
     return -1;
 }
+
+// Returns threshold for DeepTau as a function of the tau Pt
+float GetDeepTauThr(float pt) {
+    float t1 = 0.649, t2 = 0.441, t3 = 0.05, x1 = 35, x2 = 100, x3 = 300; 
+    if (pt <= x1) return t1; 
+    if (pt >= x3) return t3; 
+    if (pt < x2) return (t2 - t1) / (x2 - x1) * (pt - x1) + t1; 
+    return (t3 - t2) / (x3 - x2) * (pt - x2) + t2;
+}
+
+// Returns threshold for ParT flat in tau Pt
+float GetParTThr(float pt) {
+    return 0.333;
+}

@@ -5,13 +5,14 @@ plt.style.use(hep.style.CMS)
 from Utils import *
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Arguments for CompareAcceptance.py')
+    parser = argparse.ArgumentParser(description='Arguments for Acceptance.py')
     parser.add_argument('--in-dir', type=str, default='./LaunchReprocessing/DeepTau/HLTMenu', help='Input directory to step2 rot files with HLT menu.')
     parser.add_argument('--max-files', type=int, default=None, help='Maximum number of files to process.')
     parser.add_argument('--skip-histos', action='store_true', required=False, help='Skip histogram creation.')
     parser.add_argument('--histo-dir', default='Dataframes', help='Output directory for the merged dataframe and histograms.')
     parser.add_argument('--plots-dir', default='Plots_Acceptance', help='Output directory for the plots.')
     parser.add_argument('--tau-hlt-trig', type=str, choices=['DeepTau', 'ParT'], default='DeepTau', help='Tau reconstruction strateggy (default: %(default)s).')
+    parser.add_argument('--ratio-plot', action='store_true', help='Add ratio plot in the bottom pannel.')
     args = parser.parse_args()
 
     tau_hlt_trig = args.tau_hlt_trig
@@ -90,8 +91,8 @@ if __name__ == '__main__':
     ##############################################################
 
     variables_dict = {
-        "mass": ["mass [GeV]", r"Mass [GeV]", 50, 0, 1000],
-        "pt": ["p_{T} [GeV]", r"$p_{T}$ [GeV]", 50, 0, 500],
+        "mass": ["mass [GeV]", r"Mass [GeV]", 40, 200, 1000],
+        "pt": ["p_{T} [GeV]", r"$p_{T}$ [GeV]", 40, 0, 400],
         "eta": ["#eta", r"$\eta$", 50, -5, 5],
         "phi": ["#phi", r"$\phi$", 50, -3.14, 3.14]
     }
@@ -110,12 +111,12 @@ if __name__ == '__main__':
         "tautau": {"vistau1": r"Gen $\tau_{h,1}$","vistau2": r"Gen $\tau_{h,2}$"},
     }
 
-    obj_with_mass = ["HH", "Hbb", "Htt"]
+    obj_with_mass = ["HH"]
 
     selection_dict = {
         'All': {
             'def': "true",
-            'label': "All events",      'color': "#FEA201", 'hist': "step", 'alpha': 1.0,   'zorder': 1,    },
+            'label': "All events",      'color': "#9c9ca1", 'hist': "step", 'alpha': 1.0,   'zorder': 1,    },
         'PassL1': {
             'def': "pass_L1",
             'label': "L1 acceptance",   'color': "#80CAFA", 'hist': "fill", 'alpha': 0.5,   'zorder': 3,    },
@@ -182,12 +183,20 @@ if __name__ == '__main__':
 
             for i, obj in enumerate(objects):
 
-                fig, ax = plt.subplots(1, figsize=(10,10))
-                hep.cms.label("Preliminary", data=False, ax=ax, rlabel=r"$HH \rightarrow bb\tau\tau$ (200 PU)", fontsize=22)
+                if args.ratio_plot:
+                    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12),  sharex=True, gridspec_kw={"height_ratios": [0.8, 0.2], "hspace": 0.05})
+                    ax2.set_xlabel(f"{obj_labels[obj]} {label_latex}")
+                else:
+                    fig, ax1 = plt.subplots(1, figsize=(10,10))
+                    ax1.set_xlabel(f"{obj_labels[obj]} {label_latex}")
+
+                hep.cms.label("Preliminary", data=False, ax=ax1, rlabel=r"$HH \rightarrow bb\tau\tau$ (200 PU)", fontsize=22)
 
                 edges = np.linspace(min_val, max_val, bins + 1)
+                den = max_count = 0
+                ref_contents = ref_errors = None
 
-                for sel_name in selection_dict.keys():
+                for i_sel, sel_name in enumerate(selection_dict.keys()):
                     
                     hist = histos_file.Get(f"Ch_{channel}/{sel_name}/{obj}_{var}")
                     if not hist:
@@ -195,16 +204,47 @@ if __name__ == '__main__':
                         continue
 
                     centers, contents, errors = hist_to_numpy(hist)
-                    hep.histplot(contents, edges, ax=ax, color=selection_dict[sel_name]['color'], histtype=selection_dict[sel_name]['hist'], alpha=selection_dict[sel_name]['alpha'], zorder=selection_dict[sel_name]['zorder'])
-                    ax.errorbar(centers, contents, yerr=errors, fmt="o", markersize=3, capsize=2, color=selection_dict[sel_name]['color'], zorder=selection_dict[sel_name]['zorder'], label=f"{selection_dict[sel_name]['label']} = {hist.GetEntries()}")
 
-                ax.set_xlabel(f"{obj_labels[obj]} {label_latex}")
-                ax.set_ylabel("Events")
-                ax.legend(frameon=False, loc="upper right", title=f"Channel {ch_title} ({tau_hlt_trig})", title_fontsize=20, fontsize=20, alignment="left")
-                ax.set_xlim(min_val, max_val)
-                ax.grid(True, alpha=0.75, linestyle="dashdot", linewidth=0.75)
+                    if i_sel == 0: 
+                        den = hist.GetEntries()
+                        max_count = np.max(contents)
+                        frac_label = ""
+                        ref_contents = contents.copy()
+                        ref_errors = errors.copy()
+                    else:
+                        frac = hist.GetEntries() / den * 100
+                        frac_err = np.sqrt(hist.GetEntries()) / den * 100
+                        frac_label = rf"= $({frac:.1f}\pm{frac_err:.1f})\%$"
 
-                fig.tight_layout()
+                    if selection_dict[sel_name]['hist'] == 'fill':
+                        hep.histplot(contents, edges, ax=ax1, color=selection_dict[sel_name]['color'], histtype=selection_dict[sel_name]['hist'], alpha=selection_dict[sel_name]['alpha'], zorder=selection_dict[sel_name]['zorder'])
+                    hep.histplot(contents, edges, ax=ax1, color=selection_dict[sel_name]['color'], histtype='step', zorder=selection_dict[sel_name]['zorder'])
+                    ax1.errorbar(centers, contents, yerr=errors, fmt="o", markersize=3, capsize=2, color=selection_dict[sel_name]['color'], zorder=selection_dict[sel_name]['zorder'], label=f"{selection_dict[sel_name]['label']} {frac_label}")
+
+                    if args.ratio_plot:
+
+                        ratio = np.full_like(contents, np.nan, dtype=float)
+                        ratio_err = np.full_like(contents, np.nan, dtype=float)
+                        mask = ref_contents > 5
+                        ratio[mask] = contents[mask] / ref_contents[mask]
+
+                        if i_sel != 0:
+                            ratio_err[mask] = np.sqrt(np.clip(ratio[mask] * (1 - ratio[mask]), 0, None) / ref_contents[mask])
+                            ax2.errorbar(centers[mask], ratio[mask], yerr=ratio_err[mask], fmt="o--", markersize=3, capsize=2, elinewidth=1, color=selection_dict[sel_name]['color'])
+
+                ax1.set_ylabel("Events")
+                ax1.legend(frameon=False, loc="upper left", title=f"Channel {ch_title}", title_fontsize=18, fontsize=18, alignment="left")
+                ax1.set_xlim(min_val, max_val)
+                ax1.set_ylim(0,1.45*max_count)
+                ax1.grid(True, alpha=0.75, linestyle="dashdot", linewidth=0.75)
+
+                if args.ratio_plot:
+                    ax2.set_yticks([0.0, 0.5, 1.0])
+                    ax2.set_ylabel("Ratio")
+                    ax2.set_ylim(-0.1, 1.1)
+                    ax2.grid(True, alpha=0.75, linestyle="dashdot", linewidth=0.75)
+
+                # fig.tight_layout()
 
                 out_path = f"{plots_dir_ch}/{obj}_{var}"
                 print(f"[INFO] Saving plot: {out_path}")

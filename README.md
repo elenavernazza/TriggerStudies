@@ -42,12 +42,12 @@ python3 RunAll.py --menu NGT --start-from 0 --n-files 10 --out-dir ParT  # --dry
 ### 3. Run the trigger acceptance comparison
 ```
 cd ..
-python3 CompareAcceptance.py \
+python3 Acceptance.py \
  --histo-dir Dataframes \
  --plots-dir Plots_Acceptance \
  --in-dir <path_to>/HLTMenu/OutNano \
  --tau-hlt-trig DeepTau
-python3 CompareAcceptance.py \
+python3 Acceptance.py \
  --histo-dir Dataframes \
  --plots-dir Plots_Acceptance \
  --in-dir <path_to>/HLTMenu/OutNano \
@@ -59,7 +59,7 @@ python3 CompareAcceptance.py \
 python3 ReconstructionEfficiency.py \
  --tau-reco DeepTau --in-dir <path_to>/NGTMenu_DeepTau_FullTracking/OutNano/ \
  --histo-dir Dataframes_FullTracking \
- --plots-dir Plots_RecoEff_FullTracking
+ --plots-dir Plots_RecoEff_FullTracking # --skip-histos --ratio-plot
 python3 ReconstructionEfficiency.py \
  --tau-reco DeepTau --in-dir <path_to>/NGTMenu_DeepTau_PixelTracking/OutNano/ \
  --histo-dir Dataframes_PixelTracking \
