@@ -13,6 +13,8 @@ if __name__ == '__main__':
     parser.add_argument('--plots-dir', default='Plots_RecoEff', help='Output directory for the plots.')
     parser.add_argument('--tau-reco', type=str, choices=['DeepTau', 'ParT'], default='DeepTau', help='Tau reconstruction strateggy (default: %(default)s).')
     parser.add_argument('--ratio-plot', action='store_true', help='Add ratio plot in the bottom pannel.')
+    parser.add_argument('--tau-id-thr', type=float, default=0, help='ID threshold for tau tagging. Default is the HLT menu threshold.')
+    parser.add_argument('--btag-id-thr', type=float, default=0.5, help='DeepJet ID threshold for b-tagging.')
     args = parser.parse_args()
 
     tau_reco = args.tau_reco
@@ -79,7 +81,7 @@ if __name__ == '__main__':
         df_etau = FindGenFinalState(df_etau, "etau")
         df_etau = FindRecoMataching(df_etau, "etau", collection_dict, tau_reco)
         df_etau = (df_etau
-                   .Define("hlt_tau_tag_thr", f"Get{tau_reco}Thr(hlt_tau_pt)")
+                   .Define("hlt_tau_tag_thr", f"Get{tau_reco}Thr(hlt_tau_pt)" if args.tau_id_thr == 0 else f"{args.tau_id_thr}")
                    .Define("l1_tau_tag_thr", f"0.5"))
         
         # MUTAU
@@ -87,7 +89,7 @@ if __name__ == '__main__':
         df_mutau = FindGenFinalState(df_mutau, "mutau")
         df_mutau = FindRecoMataching(df_mutau, "mutau", collection_dict, tau_reco)
         df_mutau = (df_mutau
-                    .Define("hlt_tau_tag_thr", f"Get{tau_reco}Thr(hlt_tau_pt)")
+                    .Define("hlt_tau_tag_thr", f"Get{tau_reco}Thr(hlt_tau_pt)" if args.tau_id_thr == 0 else f"{args.tau_id_thr}")
                     .Define("l1_tau_tag_thr", f"0.5"))
         
         # TAUTAU
@@ -95,8 +97,8 @@ if __name__ == '__main__':
         df_tautau = FindGenFinalState(df_tautau, "tautau")
         df_tautau = FindRecoMataching(df_tautau, "tautau", collection_dict, tau_reco)
         df_tautau = (df_tautau
-                     .Define("hlt_tau1_tag_thr", f"Get{tau_reco}Thr(hlt_tau1_pt)")
-                     .Define("hlt_tau2_tag_thr", f"Get{tau_reco}Thr(hlt_tau2_pt)")
+                     .Define("hlt_tau1_tag_thr", f"Get{tau_reco}Thr(hlt_tau1_pt)" if args.tau_id_thr == 0 else f"{args.tau_id_thr}")
+                     .Define("hlt_tau2_tag_thr", f"Get{tau_reco}Thr(hlt_tau2_pt)" if args.tau_id_thr == 0 else f"{args.tau_id_thr}")
                      .Define("l1_tau1_tag_thr", f"0.5")
                      .Define("l1_tau2_tag_thr", f"0.5"))
 
@@ -120,7 +122,7 @@ if __name__ == '__main__':
     # pdb.set_trace()
 
     triggers = ['hlt']
-    bjet_wp = 0.5
+    bjet_wp = args.btag_id_thr
 
     common_gen_obj_dict = {
         "HH": {"name": "HH", "label": r"Gen HH",},
