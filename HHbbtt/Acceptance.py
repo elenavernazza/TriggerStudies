@@ -119,13 +119,13 @@ if __name__ == '__main__':
             'label': "All events",      'color': "#9c9ca1", 'hist': "step", 'alpha': 1.0,   'zorder': 1,    },
         'PassL1': {
             'def': "pass_L1",
-            'label': "L1 seeds",   'color': "#80CAFA", 'hist': "fill", 'alpha': 0.5,   'zorder': 3,    },
+            'label': "Channel-specific L1 seeds",   'color': "#80CAFA", 'hist': "fill", 'alpha': 0.5,   'zorder': 3,    },
         'PassHLT': {
             'def': "pass_HLT",
-            'label': "HLT paths",  'color': "#009900", 'hist': "fill", 'alpha': 0.5,   'zorder': 4,    },
+            'label': "Channel-specific HLT paths",  'color': "#009900", 'hist': "fill", 'alpha': 0.5,   'zorder': 4,    },
         'PassNGT': {
             'def': "pass_NGT",
-            'label': "NGT scouting",  'color': "#9437FF", 'hist': "fill", 'alpha': 0.5,   'zorder': 2,    },
+            'label': "NGT scouting (full L1 OR)",  'color': "#9437FF", 'hist': "fill", 'alpha': 0.5,   'zorder': 2,    },
     }
 
     if not args.skip_histos:
