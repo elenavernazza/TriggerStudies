@@ -158,3 +158,43 @@ float GetDeepTauThr(float pt) {
 float GetParTThr(float pt) {
     return 0.333;
 }
+
+// Returns for each HLT tau the index of the closest GenVisTau within maxDR (-1 if none)
+RVecI MatchToGen(const RVecF& hlt_eta, const RVecF& hlt_phi, const RVecF& gen_eta, const RVecF& gen_phi, float maxDR) {
+
+    RVecI matches(hlt_eta.size(), -1);
+
+    for (std::size_t i = 0; i < hlt_eta.size(); i++) {
+
+        float min_dR2 = maxDR * maxDR;
+
+        for (std::size_t j = 0; j < gen_eta.size(); j++) {
+
+            float dEta = gen_eta[j] - hlt_eta[i];
+            float dPhi = std::abs(gen_phi[j] - hlt_phi[i]);
+            if (dPhi > M_PI) dPhi = 2.0 * M_PI - dPhi;
+
+            float dR2 = dEta*dEta + dPhi*dPhi;
+            if (dR2 < min_dR2) { 
+                min_dR2 = dR2; 
+                matches[i] = j; 
+            }
+        }
+    }
+    return matches;
+}
+
+// Returns the eta/phi of gen b-quarks (|pdgId| = 5, followed to their last copy)
+void GetGenBQuarks(const RVecI& pdgId, const RVecI& genPartIdxMother, RVecF& out_eta, RVecF& out_phi,
+                   const RVecF& GenPart_eta, const RVecF& GenPart_phi) {
+
+    out_eta.clear();
+    out_phi.clear();
+
+    for (std::size_t i = 0; i < pdgId.size(); i++) {
+        if (std::abs(pdgId[i]) != 5) continue;
+        int last = Get_last_copy(i, pdgId, genPartIdxMother);
+        out_eta.push_back(GenPart_eta[last]);
+        out_phi.push_back(GenPart_phi[last]);
+    }
+}
